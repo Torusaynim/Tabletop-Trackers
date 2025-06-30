@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+
+<html lang="ru">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Buckshot Roulette</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+<style>
+    .bullet {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      display: inline-block;
+      margin: 0 4px;
+    }
+    .live {
+      background-color: red;
+    }
+    .blank {
+      background-color: lightgray;
+    }
+    .heart {
+      color: red;
+      font-size: 20px;
+    }
+    .player-active {
+      border: 2px solid blue;
+    }
+  </style>
+</head>
+<body class="bg-light p-4">
+<div class="container">
+<h1 class="mb-4">Buckshot Roulette Tracker</h1>
+<div class="row mb-4">
+<div class="col">
+<label>Всего выстрелов</label>
+<input class="form-control" id="totalBullets" type="number" value="6"/>
+</div>
+<div class="col">
+<label>Боевых выстрелов</label>
+<input class="form-control" id="liveBullets" type="number" value="2"/>
+</div><div class="col">
+<label>Макс. предметов</label>
+<input class="form-control" id="maxItemsPerPlayer" type="number" value="5"/>
+</div>
+<div class="col">
+<label>Жизней по умолчанию</label>
+<input class="form-control" id="defaultHearts" type="number" value="3"/>
+</div>
+<div class="col">
+<label>Предметов на игрока</label>
+<input class="form-control" id="itemsPerPlayer" type="number" value="2"/>
+</div>
+<div class="col d-flex align-items-end gap-2">
+<button class="btn btn-primary" onclick="generateBullets()">Сгенерировать</button>
+<button class="btn btn-secondary" onclick="addPlayer()">Добавить игрока</button>
+</div>
+</div>
+<div class="text-center mb-4" id="chamber"></div>
+<div class="row" id="players"></div>
+<div class="text-center mt-4">
+<button class="btn btn-warning me-2" onclick="assignItems()">Выдать предметы</button>
+<button class="btn btn-success" onclick="nextTurn()">Следующий ход</button>
+</div>
+</div>
+<script>
+    let players = [];
+    let chamber = [];
+    let currentPlayerIndex = 0;
+
+    function generateBullets() {
+      const total = parseInt(document.getElementById('totalBullets').value);
+      const live = parseInt(document.getElementById('liveBullets').value);
+      chamber = Array(total).fill('blank');
+      let count = 0;
+      while (count < live) {
+        const index = Math.floor(Math.random() * total);
+        if (chamber[index] === 'blank') {
+          chamber[index] = 'live';
+          count++;
+        }
+      }
+      updateChamber();
+      updatePlayers();
+    }
+
+    function updateChamber() {
+      const container = document.getElementById('chamber');
+      container.innerHTML = '';
+      chamber.forEach(b => {
+        const div = document.createElement('div');
+        div.className = `bullet ${b}`;
+        container.appendChild(div);
+      });
+    }
+
+    function addPlayer() {
+      const hearts = parseInt(document.getElementById('defaultHearts').value);
+      players.push({ name: `Игрок ${players.length + 1}`, hearts, items: [] });
+      updatePlayers();
+    }
+
+    function changeHearts(index, delta) {
+      players[index].hearts = Math.max(0, players[index].hearts + delta);
+      if (players[index].hearts === 0) {
+        alert(players[index].name + " выбыл из игры!");
+        players.splice(index, 1);
+        if (currentPlayerIndex >= players.length) currentPlayerIndex = 0;
+      }
+      updatePlayers();
+    }
+
+    function shoot(index) {
+      if (chamber.length === 0) {
+        alert('Барабан пуст! Перегенерируйте выстрелы.');
+        return;
+      }
+
+      const bullet = chamber.shift();
+      const isSelfShot = index === currentPlayerIndex;
+
+      if (bullet === "live") {
+        let damage = 1;
+        if (players[currentPlayerIndex]._doubleDamage) {
+          damage = 2;
+          players[currentPlayerIndex]._doubleDamage = false;
+          alert(`${players[index].name} получает удвоенный урон из-за Ручной пилы! 💥💥`);
+        } else {
+          alert(`${players[index].name} получил боевую пулю! 💥`);
+        }
+
+        players[index].hearts = Math.max(0, players[index].hearts - damage);
+
+        if (players[index].hearts === 0) {
+          alert(players[index].name + " выбыл из игры!");
+          players.splice(index, 1);
+          if (index <= currentPlayerIndex && currentPlayerIndex > 0) {
+            currentPlayerIndex--;
+          }
+        }
+      } else {
+        alert(`${players[index].name} отделался холостым. 😌`);
+      }
+
+      updateChamber();
+      updatePlayers();
+
+      if (!isSelfShot || bullet === "live") {
+        nextTurn();
+      }
+    }
+
+    function updatePlayers() {
+      const container = document.getElementById('players');
+      container.innerHTML = '';
+      players.forEach((player, i) => {
+        const col = document.createElement('div');
+        col.className = 'col-md-4 mb-3';
+        const card = document.createElement('div');
+        card.className = `card p-3 ${i === currentPlayerIndex ? 'player-active' : ''}`;
+
+        const name = document.createElement('input');
+        name.className = 'form-control mb-2';
+        name.value = player.name;
+        name.oninput = () => { players[i].name = name.value };
+
+        const hearts = document.createElement('div');
+        for (let h = 0; h < player.hearts; h++) {
+          const heart = document.createElement('span');
+          heart.className = 'heart me-1';
+          heart.textContent = '❤️';
+          hearts.appendChild(heart);
+        }
+
+        const controls = document.createElement('div');
+        controls.className = 'btn-group mt-2';
+        const plus = document.createElement('button');
+        plus.className = 'btn btn-outline-success';
+        plus.textContent = '+1';
+        plus.onclick = () => changeHearts(i, 1);
+
+        const minus = document.createElement('button');
+        minus.className = 'btn btn-outline-danger';
+        minus.textContent = '-1';
+        minus.onclick = () => changeHearts(i, -1);
+
+        const shootBtn = document.createElement('button');
+        shootBtn.className = 'btn btn-outline-warning';
+        shootBtn.textContent = 'Выстрел';
+        shootBtn.onclick = () => shoot(i);
+
+        controls.appendChild(plus);
+        controls.appendChild(minus);
+        controls.appendChild(shootBtn);
+
+
+        card.appendChild(name);
+        card.appendChild(hearts);
+if (player.items && player.items.length > 0) {
+          const itemHeader = document.createElement("div");
+          itemHeader.innerHTML = "<strong>Предметы:</strong>";
+          card.appendChild(itemHeader);
+          const itemGrid = document.createElement("div");
+          itemGrid.className = "d-flex flex-wrap justify-content-start";
+
+          player.items.forEach((item, itemIdx) => {
+            const btn = document.createElement("button");
+            btn.className = "btn btn-outline-dark m-1 d-flex flex-column align-items-center justify-content-center";
+            btn.style.width = "47%";
+            btn.style.textAlign = "center";
+            btn.onclick = () => useItem(i, item, itemIdx);
+
+            const img = document.createElement("img");
+            img.src = `img/buckshot/${item}.png`;
+            img.alt = item;
+            img.style.width = "100px";
+            img.style.height = "100px";
+
+            const label = document.createElement("div");
+            label.style.fontSize = "12px";
+            label.textContent = item;
+
+            btn.appendChild(img);
+            btn.appendChild(label);
+            itemGrid.appendChild(btn);
+          });
+
+          card.appendChild(itemGrid);
+        }
+        
+        card.appendChild(controls);
+        col.appendChild(card);
+        container.appendChild(col);
+      });
+    }
+
+    function nextTurn() {
+  if (players.length === 0) return;
+
+  let attempts = 0;
+  do {
+    currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
+    attempts++;
+  } while (players[currentPlayerIndex]._skipNextTurn && attempts <= players.length);
+
+  const player = players[currentPlayerIndex];
+  if (player._skipNextTurn) {
+    alert(`${player.name} пропускает ход из-за наручников!`);
+    player._skipNextTurn = false;
+    nextTurn();
+    return;
+  }
+
+  updatePlayers();
+}
+  
+const itemList = [
+  "Банка пива",
+  "Ручная пила",
+  "Наручники",
+  "Лупа",
+  "Пачка сигарет",
+  "Шприц адреналина",
+  "Одноразовый телефон",
+  "Инвертор",
+  "Просроченное лекарство"
+];
+
+function assignItems() {
+  const count = parseInt(document.getElementById('itemsPerPlayer').value);
+  const max = parseInt(document.getElementById('maxItemsPerPlayer').value);
+  players.forEach(player => {
+    const shuffled = [...itemList].sort(() => 0.5 - Math.random());
+    player.items = [...player.items, ...shuffled.slice(0, count)].slice(0, max);
+  });
+  updatePlayers();
+}
+
+function useItem(index, item, itemIdx) {
+  const player = players[index];
+  switch(item) {
+    case "Банка пива":
+      if (chamber.length > 0) {
+        alert(player.name + " использует Банку пива и выбрасывает текущий патрон.");
+        chamber.shift();
+        updateChamber();
+      }
+      break;
+    case "Ручная пила":
+      player._doubleDamage = true;
+      alert(player.name + " использует Ручную пилу: следующий урон удвоен.");
+      break;
+    case "Наручники":
+      const options = players.map((p, idx) => `${idx + 1}: ${p.name}`).join("\n");
+      const target = prompt("Выберите игрока для наручников:\n" + options);
+      const tIdx = parseInt(target) - 1;
+      if (!isNaN(tIdx) && players[tIdx]) {
+        players[tIdx]._skipNextTurn = true;
+        alert(players[tIdx].name + " пропустит следующий ход!");
+      }
+      break;
+    case "Лупа":
+      if (chamber.length > 0) alert("Следующий патрон: " + (chamber[0] === 'live' ? "боевой" : "холостой"));
+      else alert("Барабан пуст");
+      break;
+    case "Пачка сигарет":
+      player.hearts += 1;
+      alert(player.name + " восстанавливает 1 здоровья.");
+      break;
+    case "Шприц адреналина":
+      const victimOptions = players.map((p, idx) => `${idx + 1}: ${p.name}`).join("\n");
+      const targetNum = prompt("Выберите игрока для кражи предмета:\n" + victimOptions);
+      const victimIdx = parseInt(targetNum) - 1;
+      if (!isNaN(victimIdx) && players[victimIdx] && players[victimIdx].items?.length) {
+        const itemsList = players[victimIdx].items.map((itm, i) => `${i + 1}: ${itm}`).join("\n");
+        const itemNum = prompt("Выберите предмет у " + players[victimIdx].name + " (введите номер):\n" + itemsList);
+        const itemIdxToSteal = parseInt(itemNum) - 1;
+        if (!isNaN(itemIdxToSteal) && players[victimIdx].items[itemIdxToSteal]) {
+          const stolen = players[victimIdx].items.splice(itemIdxToSteal, 1)[0];
+          player.items.push(stolen);
+          alert(player.name + " украл " + stolen + " у " + players[victimIdx].name);
+        }
+      }
+      break;
+    case "Одноразовый телефон":
+      if (chamber.length > 0) {
+        const rand = Math.floor(Math.random() * chamber.length);
+        alert("Патрон #" + (rand + 1) + ": " + (chamber[rand] === 'live' ? "боевой" : "холостой"));
+      }
+      break;
+    case "Инвертор":
+      if (chamber.length > 0) {
+        chamber[0] = chamber[0] === 'live' ? 'blank' : 'live';
+        alert("Текущий патрон инвертирован.");
+        updateChamber();
+      }
+      break;
+    case "Просроченное лекарство":
+      if (Math.random() < 0.5) {
+        player.hearts += 2;
+        alert(player.name + " получает +2 здоровья.");
+      } else {
+        player.hearts = Math.max(0, player.hearts - 1);
+        alert(player.name + " теряет 1 здоровье.");
+      }
+      break;
+  }
+  player.items.splice(itemIdx, 1);
+  updatePlayers();
+}
+
+</script>
+</body>
+</html>
