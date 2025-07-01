@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Меню трекеров для адаптация игр</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <style>
+    .card-hover:hover {
+      transform: scale(1.03);
+      transition: 0.3s ease-in-out;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+    }
+    .card-img-top {
+      max-height: 200px;
+      object-fit: cover;
+    }
+  </style>
+</head>
+<body class="bg-light d-flex justify-content-center align-items-center vh-100">
+
+  <div class="card card-hover text-center" style="width: 18rem; cursor: pointer;" onclick="location.href='BuckshotRoulette.html'">
+    <img src="img/buckshot/preview.jpg" class="card-img-top" alt="Buckshot Preview">
+    <div class="card-body">
+      <h5 class="card-title">Buckshot Roulette Tracker</h5>
+      <p class="card-text">Отслеживание игры для ведущего</p>
+    </div>
+  </div>
+
+</body>
+</html>
